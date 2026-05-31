@@ -11,9 +11,11 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 class QueryExecutor {
@@ -45,50 +47,61 @@ class QueryExecutor {
     }
 
     Map<String, Object> getById(String tableName, Object id, int fieldsNumber) {
-        Map<String, Object> res = new HashMap<>();
         String query = String.format("SELECT * FROM %s where id = %s", tableName, id);
+        var result = getResultByQuery(query, fieldsNumber, true);
+        if (result.size() > 1) {
+            throw new OrmException("Expected 1 row with specified id, found " + result.size());
+        } else {
+            return result.get(0);
+        }
+    }
 
+    private List<Map<String, Object>> getResultByQuery(String query, int fieldsNumber, boolean oneRowExpected) {
+        List<Map<String, Object>> res = new ArrayList<>();
         try (Connection connection = DriverManager.getConnection(dbURL, dbUser, dbPass)) {
             try (PreparedStatement statement = connection.prepareStatement(query)) {
                 ResultSet resultSet = statement.executeQuery();
                 if (!resultSet.isBeforeFirst()) {        // if 0 rows in result
-                    return Collections.emptyMap();
+                    return Collections.emptyList();
                 }
                 ResultSetMetaData metaData = resultSet.getMetaData();
-                resultSet.next();
-                for (int i = 1; i <= fieldsNumber; i++) {             // from 1 because ResultSet starts from 1
-                    String columnName = metaData.getColumnName(i);
-                    System.out.println("ColumnName:" + columnName);
+                while(resultSet.next()) {
+                    Map<String, Object> temp = new HashMap<>();
+                    for (int i = 1; i <= fieldsNumber; i++) {             // from 1 because ResultSet starts from 1
+                        String columnName = metaData.getColumnName(i);
+                        System.out.println("ColumnName:" + columnName);
 
-                    int columnType = metaData.getColumnType(i);
-                    System.out.println("Index: " + i);
-                    System.out.println("Type: " + columnType);
-                    switch (columnType) {
-                        case Types.TINYINT, Types.SMALLINT, Types.INTEGER -> {
-                            Integer value = resultSet.getInt(i);
-                            res.put(columnName, value);
+                        int columnType = metaData.getColumnType(i);
+                        System.out.println("Index: " + i);
+                        System.out.println("Type: " + columnType);
+                        switch (columnType) {
+                            case Types.TINYINT, Types.SMALLINT, Types.INTEGER -> {
+                                Integer value = resultSet.getInt(i);
+                                temp.put(columnName, value);
+                            }
+                            case Types.VARCHAR, Types.NVARCHAR -> {
+                                String value = resultSet.getString(i);
+                                temp.put(columnName, value);
+                            }
+                            case Types.BIGINT -> {
+                                Long value = resultSet.getLong(i);
+                                temp.put(columnName, value);
+                            }
+                            case Types.BOOLEAN -> {
+                                Boolean value = resultSet.getBoolean(i);
+                                temp.put(columnName, value);
+                            }
+                            case Types.BIT -> {       // for MySql, MySql has tinyint (bit) for boolean
+                                Boolean value =
+                                    resultSet.getByte(i) == 0 ? Boolean.FALSE : Boolean.TRUE;
+                                temp.put(columnName, value);
+                            }
+                            default -> throw new OrmException("Type of the value from db '" + columnType + "' is not supported yet");
                         }
-                        case Types.VARCHAR, Types.NVARCHAR -> {
-                            String value = resultSet.getString(i);
-                            res.put(columnName, value);
-                        }
-                        case Types.BIGINT -> {
-                            Long value = resultSet.getLong(i);
-                            res.put(columnName, value);
-                        }
-                        case Types.BOOLEAN -> {
-                            Boolean value = resultSet.getBoolean(i);
-                            res.put(columnName, value);
-                        }
-                        case Types.BIT -> {       // for MySql, MySql has tinyint (bit) for boolean
-                            Boolean value =
-                                resultSet.getByte(i) == 0 ? Boolean.FALSE : Boolean.TRUE;
-                            res.put(columnName, value);
-                        }
-                        default -> throw new OrmException(
-                            "Type of the value from db is not supported yet");
                     }
+                    res.add(temp);
                 }
+
             } catch (SQLException e) {
                 throw new OrmException("Error while executing query", e);
             }

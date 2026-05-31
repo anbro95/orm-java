@@ -68,7 +68,7 @@ public class Repo<T, ID> {
             String fieldName = entry.getKey();
             Field field = fields.get(fieldName);
             if (field == null) {
-                throw new OrmException("Invalid mapping from db table: field " + fieldName + " not found in entity");
+                throw new OrmException("Invalid mapping from db table: field '" + fieldName + "' not found in entity");
             }
 
             field.setAccessible(true);
