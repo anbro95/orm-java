@@ -11,6 +11,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -50,10 +51,12 @@ class QueryExecutor {
         try (Connection connection = DriverManager.getConnection(dbURL, dbUser, dbPass)) {
             try (PreparedStatement statement = connection.prepareStatement(query)) {
                 ResultSet resultSet = statement.executeQuery();
+                if (!resultSet.isBeforeFirst()) {        // if 0 rows in result
+                    return Collections.emptyMap();
+                }
                 ResultSetMetaData metaData = resultSet.getMetaData();
                 resultSet.next();
-                for (int i = 1; i <= fieldsNumber;
-                    i++) {             // from 1 because ResultSet starts from 1
+                for (int i = 1; i <= fieldsNumber; i++) {             // from 1 because ResultSet starts from 1
                     String columnName = metaData.getColumnName(i);
                     System.out.println("ColumnName:" + columnName);
 

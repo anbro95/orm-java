@@ -1,5 +1,6 @@
 package orm.db;
 
+import java.util.Optional;
 import orm.annot.Column;
 import orm.annot.Entity;
 import orm.annot.Table;
@@ -45,8 +46,11 @@ public class Repo<T, ID> {
         executor.save(tableName, fieldMap);
     }
 
-    public T getById(ID id) {
+    public Optional<T> getById(ID id) {
         Map<String, Object> fromDB = executor.getById(tableName, id, fields.size());
+        if (fromDB.isEmpty()) {
+            return Optional.empty();
+        }
         Object newEntity = null;
         try {
             newEntity = clazz.getConstructor().newInstance();
@@ -64,8 +68,7 @@ public class Repo<T, ID> {
             String fieldName = entry.getKey();
             Field field = fields.get(fieldName);
             if (field == null) {
-                throw new OrmException(
-                    "Invalid mapping from db table: field " + fieldName + " not found in entity");
+                throw new OrmException("Invalid mapping from db table: field " + fieldName + " not found in entity");
             }
 
             field.setAccessible(true);
@@ -77,7 +80,7 @@ public class Repo<T, ID> {
             field.setAccessible(false);
         }
 
-        return (T) newEntity;
+        return Optional.of((T) newEntity);
 
     }
 
