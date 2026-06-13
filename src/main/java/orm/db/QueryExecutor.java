@@ -28,7 +28,6 @@ class QueryExecutor {
         String query = String.format("INSERT INTO %s (%s) VALUES (%s);", tableName, keyString,
             valuesPlaceHolder);
 
-        System.out.println("Query: " + query);
         Iterator<Object> iterator = values.values().iterator();
         try (Connection con = DriverManager.getConnection(dbURL, dbUser, dbPass)) {
             try (PreparedStatement statement = con.prepareStatement(query)) {
@@ -41,14 +40,14 @@ class QueryExecutor {
                 throw new OrmException("Error while executing query", e);
             }
         } catch (SQLException e) {
-            throw new OrmException("Could not connect to the database", e);
+            throw new OrmException("Failed to connect to the database", e);
         }
 
     }
 
     Map<String, Object> getById(String tableName, Object id, int fieldsNumber) {
         String query = String.format("SELECT * FROM %s where id = %s", tableName, id);
-        var result = getResultByQuery(query, fieldsNumber, true);
+        var result = getResultByQuery(query, fieldsNumber);
         if (result.size() > 1) {
             throw new OrmException("Expected 1 row with specified id, found " + result.size());
         } else {
@@ -56,7 +55,26 @@ class QueryExecutor {
         }
     }
 
-    private List<Map<String, Object>> getResultByQuery(String query, int fieldsNumber, boolean oneRowExpected) {
+
+    List<Map<String, Object>> getAll(String tableName, int fieldsNumber) {
+        String query = String.format("SELECT * FROM %s", tableName);
+        return getResultByQuery(query, fieldsNumber);
+    }
+
+    void deleteById(String tableName, Object id) {
+        String query = String.format("DELETE FROM %s WHERE id = %s", tableName, id);
+        try (Connection connection = DriverManager.getConnection(dbURL, dbUser, dbPass)) {
+            try (PreparedStatement statement = connection.prepareStatement(query)) {
+                statement.executeUpdate();
+            } catch (SQLException e) {
+                throw new OrmException("Error while executing query", e);
+            }
+        } catch (SQLException e) {
+            throw new OrmException("Failed to connecto to the database", e);
+        }
+    }
+
+    private List<Map<String, Object>> getResultByQuery(String query, int fieldsNumber) {
         List<Map<String, Object>> res = new ArrayList<>();
         try (Connection connection = DriverManager.getConnection(dbURL, dbUser, dbPass)) {
             try (PreparedStatement statement = connection.prepareStatement(query)) {
@@ -69,11 +87,8 @@ class QueryExecutor {
                     Map<String, Object> temp = new HashMap<>();
                     for (int i = 1; i <= fieldsNumber; i++) {             // from 1 because ResultSet starts from 1
                         String columnName = metaData.getColumnName(i);
-                        System.out.println("ColumnName:" + columnName);
 
                         int columnType = metaData.getColumnType(i);
-                        System.out.println("Index: " + i);
-                        System.out.println("Type: " + columnType);
                         switch (columnType) {
                             case Types.TINYINT, Types.SMALLINT, Types.INTEGER -> {
                                 Integer value = resultSet.getInt(i);

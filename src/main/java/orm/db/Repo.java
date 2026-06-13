@@ -1,11 +1,13 @@
 package orm.db;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 import orm.annot.Column;
 import orm.annot.Entity;
 import orm.annot.Table;
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Locale;
@@ -46,25 +48,47 @@ public class Repo<T, ID> {
         executor.save(tableName, fieldMap);
     }
 
-    public Optional<T> getById(ID id) {
+    public Optional<T> findById(ID id) {
         Map<String, Object> fromDB = executor.getById(tableName, id, fields.size());
         if (fromDB.isEmpty()) {
             return Optional.empty();
         }
+
+        T entity = createEntity(fromDB);
+
+        return Optional.of(entity);
+
+    }
+
+    public List<T> findAll() {
+        List<Map<String, Object>> fromDB = executor.getAll(tableName, fields.size());
+        if (fromDB.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<T> result = new ArrayList<>();
+
+        for (Map<String, Object> rowData : fromDB) {
+            T entity = createEntity(rowData);
+            result.add(entity);
+        }
+
+        return result;
+    }
+
+    public void deleteById(ID id) {
+        executor.deleteById(tableName, id);
+    }
+
+    private T createEntity(Map<String, Object> data) {
         Object newEntity = null;
         try {
             newEntity = clazz.getConstructor().newInstance();
-        } catch (InstantiationException e) {
-            throw new RuntimeException(e);
-        } catch (IllegalAccessException e) {
-            throw new RuntimeException(e);
-        } catch (InvocationTargetException e) {
-            throw new RuntimeException(e);
-        } catch (NoSuchMethodException e) {
-            throw new RuntimeException(e);
+        } catch (Exception e) {
+            throw new OrmException("Failed to create entity object", e);
         }
 
-        for (Entry<String, Object> entry : fromDB.entrySet()) {
+        for (Entry<String, Object> entry : data.entrySet()) {
             String fieldName = entry.getKey();
             Field field = fields.get(fieldName);
             if (field == null) {
@@ -80,10 +104,8 @@ public class Repo<T, ID> {
             field.setAccessible(false);
         }
 
-        return Optional.of((T) newEntity);
-
+        return (T) newEntity;
     }
-
 
     private void inspectClass(Class<?> clazz) {
         Entity entityAnnot = clazz.getAnnotation(Entity.class);
