@@ -18,15 +18,12 @@ public class Repo<T, ID> {
 
     private final QueryExecutor executor;
     private final Class<T> clazz;
-    private String tableName;
-    private final Map<String, Field> fields;
-
+    private EntityInfo entityInfo;
 
     public Repo(Class<T> clazz) {
         this.executor = new QueryExecutor();
         this.clazz = clazz;
-        this.fields = new HashMap<>();
-        inspectClass(clazz);
+        this.entityInfo = Inspector.getInspector().getEntityInfos().get(clazz.getName());
     }
 
     public void save(T obj) {
@@ -45,11 +42,11 @@ public class Repo<T, ID> {
             }
         }
 
-        executor.save(tableName, fieldMap);
+        executor.save(entityInfo.getTableName(), fieldMap);
     }
 
     public Optional<T> findById(ID id) {
-        Map<String, Object> fromDB = executor.getById(tableName, id, fields.size());
+        Map<String, Object> fromDB = executor.getById(entityInfo.getTableName(), id, entityInfo.getFields().size());
         if (fromDB.isEmpty()) {
             return Optional.empty();
         }
@@ -61,7 +58,7 @@ public class Repo<T, ID> {
     }
 
     public List<T> findAll() {
-        List<Map<String, Object>> fromDB = executor.getAll(tableName, fields.size());
+        List<Map<String, Object>> fromDB = executor.getAll(entityInfo.getTableName(), entityInfo.getFields().size());
         if (fromDB.isEmpty()) {
             return Collections.emptyList();
         }
@@ -77,7 +74,7 @@ public class Repo<T, ID> {
     }
 
     public void deleteById(ID id) {
-        executor.deleteById(tableName, id);
+        executor.deleteById(entityInfo.getTableName(), id);
     }
 
     private T createEntity(Map<String, Object> data) {
@@ -90,7 +87,7 @@ public class Repo<T, ID> {
 
         for (Entry<String, Object> entry : data.entrySet()) {
             String fieldName = entry.getKey();
-            Field field = fields.get(fieldName);
+            Field field = entityInfo.getFields().get(fieldName);
             if (field == null) {
                 throw new OrmException("Invalid mapping from db table: field '" + fieldName + "' not found in entity");
             }
@@ -105,21 +102,5 @@ public class Repo<T, ID> {
         }
 
         return (T) newEntity;
-    }
-
-    private void inspectClass(Class<?> clazz) {
-        Table tableAnnot = clazz.getAnnotation(Table.class);
-        if (tableAnnot != null && tableAnnot.name() != null) {
-            tableName = tableAnnot.name();
-        } else {
-            tableName = clazz.getSimpleName().toLowerCase(Locale.ROOT);
-        }
-
-        Field[] declaredFields = clazz.getDeclaredFields();
-        for (Field field : declaredFields) {
-            Column colAnn = field.getAnnotation(Column.class);
-            String name = colAnn == null ? field.getName() : colAnn.name();
-            fields.put(name, field);
-        }
     }
 }

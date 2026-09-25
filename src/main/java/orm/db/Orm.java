@@ -13,7 +13,7 @@ public class Orm {
             s = s + ".class";
             Object testPath =  callerClass.getResource(s);
 
-            Inspector inspector = new Inspector();
+            Inspector inspector = Inspector.getInspector();
             inspector.inspect(testPath.toString());
         } catch (Exception e) {e.printStackTrace();}
     }

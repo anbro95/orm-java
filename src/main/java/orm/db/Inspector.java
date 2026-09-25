@@ -13,11 +13,20 @@ public class Inspector {
 
     private Set<String> classPathes;
     private Set<Class> allClasses;
-    protected Map<String, EntityInfo> entityInfos;
+    private Map<String, EntityInfo> entityInfos;
+    private static Inspector inspector;
 
-    public Inspector() {
+    protected static Inspector getInspector() {
+        if (inspector == null) {
+            inspector = new Inspector();
+        }
+        return inspector;
+    }
+
+    private Inspector() {
         this.classPathes = new HashSet<>();
         this.allClasses = new HashSet<>();
+        this.entityInfos = new HashMap<>();
     }
 
     public void inspect(String mainPath) {
@@ -49,7 +58,6 @@ public class Inspector {
         }
     }
 
-    // file:/Users/ruha/Jaba/untitled-maven/target/classes/main/Main.class
     private void getAllClasses(String mainPath) {
         int basePathIndex = mainPath.indexOf("/target/classes/");
         String basePath = mainPath.substring(5, basePathIndex + 15);
@@ -87,6 +95,11 @@ public class Inspector {
             System.out.println(path);
         }
         return result;
+    }
+
+
+    protected Map<String, EntityInfo> getEntityInfos() {
+        return this.entityInfos;
     }
 
 }
