@@ -5,7 +5,6 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Properties;
 
-// TODO to think if it's needed to be static or not
 public class Connector {
 
     private static final String PROPERTIES_PATH = "src/main/resources/application.properties";
@@ -13,6 +12,8 @@ public class Connector {
     protected static String dbUser;
     protected static String dbPass;
     protected static boolean showSql;
+    protected static String ddlAuto; // create / create-drop / update
+    private static Properties properties;
 
     static {
         init();
@@ -27,22 +28,25 @@ public class Connector {
 //  }
 
     private static void init() {
-        Properties properties = new Properties();
+        dbURL = getProperty("db.url");
+        dbUser = getProperty("db.user");
+        dbPass = getProperty("db.password");
+        showSql = Boolean.parseBoolean(getProperty("orm.showSql"));
+        ddlAuto = getProperty("orm.ddl.auto");
+    }
 
-        try (FileInputStream fis = new FileInputStream(PROPERTIES_PATH)) {
-            properties.load(fis);
-
-            dbURL = properties.getProperty("db.url");
-            dbUser = properties.getProperty("db.user");
-            dbPass = properties.getProperty("db.password");
-
-            showSql = Boolean.parseBoolean(properties.getProperty("orm.showSql"));
-
-
-        } catch (FileNotFoundException e) {
-            throw new OrmException("Could not find properties file", e);
-        } catch (IOException e) {
-            throw new OrmException("Could not load properties", e);
+    private static String getProperty(String name) {
+        if (properties == null) {
+            properties = new Properties();
+            try (FileInputStream fis = new FileInputStream(PROPERTIES_PATH)) {
+                properties.load(fis);
+            } catch (FileNotFoundException e) {
+                throw new OrmException("Could not find properties file", e);
+            } catch (IOException e) {
+                throw new OrmException("Could not load properties", e);
+            }
         }
+
+        return properties.getProperty(name);
     }
 }

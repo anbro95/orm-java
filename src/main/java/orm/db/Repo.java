@@ -108,11 +108,6 @@ public class Repo<T, ID> {
     }
 
     private void inspectClass(Class<?> clazz) {
-        Entity entityAnnot = clazz.getAnnotation(Entity.class);
-        if (entityAnnot == null) {
-            throw new OrmException("Repo works only on @Entity classes");
-        }
-
         Table tableAnnot = clazz.getAnnotation(Table.class);
         if (tableAnnot != null && tableAnnot.name() != null) {
             tableName = tableAnnot.name();
